@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Get Weather – FIT5032</title>
+  <style>
+    body { font: 16px/1.5 system-ui, Arial, sans-serif; margin: 2rem; }
+    .card { max-width: 520px; border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
+    .row { display: flex; gap: 8px; margin: 8px 0 16px; }
+    input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 8px; }
+    button { padding: 10px 14px; border: 0; border-radius: 8px; cursor: pointer; }
+    button { background: #4f46e5; color: #fff; }
+    #result { padding: 12px; background: #f8fafc; border-radius: 8px; min-height: 48px; }
+    small { color:#64748b }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Get Weather</h2>
+    <div class="row">
+      <input id="city" placeholder="Enter a city (e.g., Melbourne)" />
+      <button id="btn">Get Weather</button>
+    </div>
+    <div id="result">Result will appear here.</div>
+    <small>Powered by Open-Meteo (no API key required).</small>
+  </div>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+    $("#btn").addEventListener("click", getWeather);
+
+    async function getWeather() {
+      const q = ($("#city").value || "Melbourne").trim();
+      $("#result").textContent = "Loading…";
+
+      try {
+        // 1) 地名 → 经纬度
+        const geoRes = await fetch(
+          "https://geocoding-api.open-meteo.com/v1/search?name=" +
+          encodeURIComponent(q) + "&count=1"
+        );
+        const geo = await geoRes.json();
+        if (!geo.results || !geo.results.length) {
+          $("#result").textContent = "City not found.";
+          return;
+        }
+        const { latitude, longitude, name, country_code } = geo.results[0];
+
+        // 2) 经纬度 → 实时天气
+        const wxRes = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`
+        );
+        const wx = await wxRes.json();
+        const cw = wx.current_weather;
+
+        // 3) 显示
+        $("#result").innerHTML =
+          `<b>${name}, ${country_code}</b><br>
+           Temperature: <b>${cw.temperature}°C</b><br>
+           Wind: ${cw.windspeed} km/h<br>
+           Time: ${cw.time.replace('T',' ')}`;
+      } catch (err) {
+        console.error(err);
+        $("#result").textContent = "Failed to fetch weather.";
+      }
+    }
+  </script>
+</body>
+</html>
